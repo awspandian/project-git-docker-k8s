@@ -1,27 +1,34 @@
----
-apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hippo-deployment
+  name: my-ak-deployment
 spec:
+  replicas: 2
   selector:
     matchLabels:
-      app: hippo-devops-project
-  replicas: 2 # tells deployment to run 2 pods matching the template
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
-
+      app: angular-app
   template:
     metadata:
       labels:
-        app: hippo-devops-project
+        app: angular-app
     spec:
       containers:
-      - name: hippo-devops-project
-        image: dockerpandian/train-schedule:latest
+      - name: my-angular-app
+        image: dockerpandian/project:latest
         imagePullPolicy: Always
         ports:
-        - containerPort: 8080
+        - containerPort: 8085
+# service type loadbalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: angular-app-svc
+spec:
+  selector:
+    app: angular-app
+  ports:
+    - protocol: TCP
+      port: 8085
+      targetPort: 8085
+  type: LoadBalancer
