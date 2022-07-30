@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: hippo-devops-project
-        image: dockerpandian/project
+        image: dockerpandian/train-schedule:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
