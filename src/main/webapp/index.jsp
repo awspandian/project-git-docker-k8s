@@ -1,5 +1,5 @@
 <html>
 <body>
-<h2> Jenkins freestyle on 18th</h2>
+<h2> Poll SCM build Checking </h2>
 </body>
 </html>
