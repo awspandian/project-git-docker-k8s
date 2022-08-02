@@ -1,0 +1,22 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('SCM') {
+            steps {
+                git 'https://github.com/awspandian/project-git-docker-k8s.git'
+            }
+        }
+	stage('BUILD') {
+            steps {
+                sh 'mvn clean'
+		sh 'mvn install'
+            }
+        }
+	stage('Deploy') {
+            steps {
+                deploy adapters: [tomcat9(credentialsId: 'webserver', path: '', url: 'http://3.111.213.49:8888/')], contextPath: 'pipleine', war: '**/*.war'
+            }
+        }
+    }
+}
