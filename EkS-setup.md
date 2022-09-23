@@ -1,69 +1,101 @@
-https://kubernetes.io/docs/setup/
+# Setup Kubernetes (K8s) Cluster on AWS
 
-###kubernetes_setup_using_eksctl
 
-Setup Kubernetes on Amazon EKS
-You can follow same procedure in the official AWS document Getting started with Amazon EKS – eksctl (https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html)
+1. Create Ubuntu EC2 instance
+1. install AWSCLI
+   ```sh
+    curl https://s3.amazonaws.com/aws-cli/awscli-bundle.zip -o awscli-bundle.zip
+    sudo apt update
+    sudo apt install unzip python
+    unzip awscli-bundle.zip
+    #sudo apt-get install unzip - if you dont have unzip in your system
+    ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+    ```
 
-Pre-requisites:
-an EC2 Instance
-Install AWSCLI latest verison
-Setup kubectl
-a. Download kubectl version 1.21
-b. Grant execution permissions to kubectl executable
-c. Move kubectl onto /usr/local/bin
-d. Test that your kubectl installation was successful
+1. Install kubectl on ubuntu instance
+   ```sh
+   curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    chmod +x ./kubectl
+    sudo mv ./kubectl /usr/local/bin/kubectl
+   ```
 
-curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl
-chmod +x ./kubectl
-mv ./kubectl /usr/local/bin 
-kubectl version --short --client
-Setup eksctl
-a. Download and extract the latest release
-b. Move the extracted binary to /usr/local/bin
-c. Test that your eksclt installation was successful
+1. Install kops on ubuntu instance
+   ```sh
+    curl -LO https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+    chmod +x kops-linux-amd64
+    sudo mv kops-linux-amd64 /usr/local/bin/kops
+    ```
+1. Create an IAM user/role  with Route53, EC2, IAM and S3 full access
 
-curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
-sudo mv /tmp/eksctl /usr/local/bin
-eksctl version
+1. Attach IAM role to ubuntu instance
+   ```sh
+   # Note: If you create IAM user with programmatic access then provide Access keys. Otherwise region information is enough
+   aws configure
+    ```
 
-Create an IAM Role and attache it to EC2 instance
-Note: create IAM user with programmatic access if your bootstrap system is outside of AWS
-IAM user should have access to
-IAM
-EC2
-CloudFormation
-Note: Check eksctl documentaiton for Minimum IAM policies (https://eksctl.io/usage/minimum-iam-policies/)
+1. Create a Route53 private hosted zone (you can create Public hosted zone if you have a domain)
+   ```sh
+   Routeh53 --> hosted zones --> created hosted zone  
+   Domain Name: hippo.net
+   Type: Private hosted zone for Amzon VPC
+   ```
 
-Create your cluster and nodes
+1. create an S3 bucket
+   ```sh
+    aws s3 mb s3://demo.k8s.hippo.net
+   ```
+1. Expose environment variable:
+   ```sh
+    export KOPS_STATE_STORE=s3://demo.k8s.hippo.net
+   ```
 
-eksctl create cluster --name cluster-name  \
---region region-name \
---node-type instance-type \
---nodes-min 2 \
---nodes-max 2 \ 
---zones <AZ-1>,<AZ-2>
+1. Create sshkeys before creating cluster
+   ```sh
+    ssh-keygen
+   ```
 
-example:
-eksctl create cluster --name hippo-cluster \
-   --region ap-south-1 \
---node-type t2.small \
-To delete the EKS clsuter
+1. Create kubernetes cluster definitions on S3 bucket
+   ```sh
+   kops create cluster --cloud=aws --zones=ap-south-1b --name=demo.k8s.hippo.net --dns-zone=hippo.net --dns private 
+    ```
 
-eksctl delete cluster hippo --region ap-south-1
-Validate your cluster using by creating by checking nodes and by creating a pod
+1. If you wish to update the cluster worker node sizes use below command 
+   ```sh 
+   kops edit ig --name=CHANGE_TO_CLUSTER_NAME nodes
+   ```
 
-kubectl get nodes
-kubectl run tomcat --image=tomcat 
-Deploying Nginx pods on Kubernetes
-Deploying Nginx Container
+1. Create kubernetes cluser
+    ```sh
+    kops update cluster demo.k8s.hippo.net --yes
+    ```
 
-kubectl create deployment  demo-nginx --image=nginx --replicas=2 --port=80
-# kubectl deployment regapp --image=hippo/regapp --replicas=2 --port=8080
-kubectl get all
-kubectl get pod
-Expose the deployment as service. This will create an ELB in front of those 2 containers and allow us to publicly access them.
+1. Validate your cluster
+     ```sh
+      kops validate cluster
+    ```
 
-kubectl expose deployment demo-nginx --port=80 --type=LoadBalancer
-# kubectl expose deployment regapp --port=8080 --type=LoadBalancer
-kubectl get services -o wide
+1. To list nodes
+   ```sh
+   kubectl get nodes
+   ```
+
+1. To delete cluster
+    ```sh
+     kops delete cluster demo.k8s.hippo.net --yes
+    ```
+   
+#### Deploying Nginx pods on Kubernetes
+1. Deploying Nginx Container
+    ```sh
+    kubectl create deploy sample-nginx --image=nginx --replicas=2 --port=80
+    # kubectl deploy simple-devops-project --image=yankils/simple-devops-image --replicas=2 --port=8080
+    kubectl get all
+    kubectl get pod
+   ```
+
+1. Expose the deployment as service. This will create an ELB in front of those 2 containers and allow us to publicly access them.
+   ```sh
+   kubectl expose deployment sample-nginx --port=80 --type=LoadBalancer
+   # kubectl expose deployment simple-devops-project --port=8080 --type=LoadBalancer
+   kubectl get services -o wide
+   ```
