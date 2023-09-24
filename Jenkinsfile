@@ -1,32 +1,39 @@
 pipeline {
     agent any
-
     stages {
         stage('SCM') {
             steps {
-                git 'https://github.com/awspandian/project-git-docker-k8s.git'
+               git branch: 'master', url: 'https://github.com/awspandian/project-git-docker-k8s.git'
             }
         }
-		stage('BUILD') {
+     	stage('Build') {
             steps {
-                sh 'mvn clean'
-				sh 'mvn install'
+               sh 'mvn clean'
+	           sh 'mvn install'
             }
         }
-		stage('Build Docker Image'){
-			sh 'docker build -t dockerpandian/project .'
-    }
-    
-    stage('Push Docker Image'){
-        withCredentials([string(credentialsId: 'DOKCER_HUB_PASSWORD', variable: 'DOKCER_HUB_PASSWORD')]) {
-          sh "docker login -u dockerpandian -p ${docker}"
+        stage('Build Docker Image') {
+
+            steps {
+                script {
+                    app = docker.build("dockerpandian/project")
+                    app.inside {
+                        sh 'echo $(curl localhost:8080)'
+                    }
+                }
+            }
         }
-        sh 'docker push dockerpandian/project'
-     }
-	 
-      stage("Deploy To Kuberates Cluster"){
-        sh 'kubectl apply -f sample.yml'
-      }
-	  
+        stage('Push Docker Image') {
+
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker') {
+                        app.push("${env.BUILD_NUMBER}")
+                        app.push("latest")
+                    }
+                }
+            }
+        }
+       
     }
 }
