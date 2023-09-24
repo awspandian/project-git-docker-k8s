@@ -19,22 +19,14 @@ pipeline {
     
     stage('Push Docker Image'){
         withCredentials([string(credentialsId: 'DOKCER_HUB_PASSWORD', variable: 'DOKCER_HUB_PASSWORD')]) {
-          sh "docker login -u dockerpandian -p ${sample-docker}"
+          sh "docker login -u dockerpandian -p ${docker}"
         }
         sh 'docker push dockerpandian/project'
      }
-		     stage("Deploy To Kuberates Cluster"){
-				kubernetesDeploy(
-				  configs: 'hippo-deploy.yml', 
-				  kubeconfigId: 'eks',
-				  enableConfigSubstitution: true
-        )
-     }
 	 
-	  /**
       stage("Deploy To Kuberates Cluster"){
-        sh 'kubectl apply -f hippo-deploy.yml'
-      } **/
+        sh 'kubectl apply -f sample.yml'
+      }
 	  
     }
 }
